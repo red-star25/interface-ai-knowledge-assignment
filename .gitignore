@@ -1,0 +1,43 @@
+# Private assignment inputs: never distribute the supplied website or kit.
+/snapshots/
+/snapshots_zip/
+/eval/
+/harness/
+/starter/
+*.zip
+*.pdf
+*.jsonl
+
+# Derived artifacts can contain the original website text.
+/results/
+/data/
+/indexes/
+/cache/
+/tmp/
+*.sqlite*
+*.db
+*.pickle
+*.pkl
+
+# Credentials and machine state.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.aws/
+.codex/
+.agents/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+.coverage
+htmlcov/
+.DS_Store
