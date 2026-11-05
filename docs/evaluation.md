@@ -1,7 +1,7 @@
 # Verified evaluation
 
-Measured locally on November 5, 2026. No external model judge, API, or live
-website was used. The organizer's scorer and reference files were unchanged.
+Measured locally on November 5, 2026. The official scorer run used no external
+model judge, API, or live website. Its scorer and reference files were unchanged.
 Raw outputs remain in the ignored local `results/` directory because they
 contain source text. No hidden evaluation set or real-data conflict gold was
 available.
@@ -16,16 +16,16 @@ python3 harness/run_eval.py --submission . \
 | Metric reported by scorer | Result |
 |---|---:|
 | Questions | 40 |
-| Weighted QA score | 0.9306 |
-| Final score | 0.9306 |
+| Weighted QA score | 0.9329 |
+| Final score | 0.9329 |
 | Stale-value trap hits | 0 |
 | Runtime errors | 0 |
 | Consistency score | 1.0 |
 | Repeat checks | 20 |
 | Paraphrase groups | 20 |
 | Speed score | 1.0 |
-| Query p50 / p95 / maximum | 0.03 / 0.05 / 0.06 seconds |
-| Ingestion | 12.0 seconds |
+| Query p50 / p95 / maximum | 0.03 / 0.05 / 0.05 seconds |
+| Ingestion | 12.3 seconds |
 | Ingestion over limit | False |
 
 The public run does not measure the conflict pillar. The scorer renormalizes
@@ -39,14 +39,14 @@ provide additional coverage.
 | Branch information | 6 | 0.95 |
 | Conflict resolution questions | 3 | 1.00 |
 | Current values | 3 | 1.00 |
-| Entity attribution | 4 | 0.9625 |
+| Entity attribution | 4 | 1.00 |
 | List completeness | 4 | 0.75 |
 | Required refusal | 3 | 1.00 |
 | Stale traps | 7 | 0.9786 |
 | Historical as-of | 4 | 0.75 |
 | Tier disambiguation | 6 | 1.00 |
 
-Counting the generated per-question records: 34 full-credit answers, four
+Counting the generated per-question records: 35 full-credit answers, three
 partial-credit answers, two zero-credit items, and four abstentions. Every
 confident answer has a verified source excerpt. These are counts derived from
 the actual output, not additional scorer metrics.
@@ -57,16 +57,17 @@ The supplied starter baseline scored **0.0930**, with zero runtime errors.
 
 | Public case | Outcome and cause | Decision |
 |---|---|---|
-| `dup-054` | Correct routing value, but the scorer expects a different source URL than the operational contact page cited | Retain the source that supports the answer; URL-only matching undercredits this citation |
 | `dup-064`, `dup-066` | Correct supported schedules cited to branch-specific announcements, outside the scorer's expected URL list | Label these published branch examples, preserve branch variation, and avoid claiming live hours |
 | `dup-008` | Correct rate destination extracted from a different supporting page than the expected citation URL | Cite the page containing the actual link rather than fabricating a citation to the destination |
 | `dup-005` | Complete certificate listing receives zero: `must_include` is empty, so the deterministic scorer assigns zero correctness | Preserve the scorer; the no-judge maximum is 62.5/64.5 = 0.9690 even with otherwise perfect answers |
 | `dup-088` | “Last year” relative to the latest 2026 snapshot requires a 2025 VTO-usage count; the reference instead targets a 2023 report | Abstain: workforce totals and total volunteer hours do not establish the requested count |
 
-The first four cases have correctness 1.0 and item score 0.85 because source
-credit is missing. The two zero-credit items have the causes above. We did not
-change reference answers, hardcode case IDs into runtime code, or substitute
-older facts to improve the score.
+`dup-054` is resolved by citing both current pages that directly publish the
+same routing number, including the expected cash-management page. The three
+remaining source-credit cases have correctness 1.0 and item score 0.85. The two
+zero-credit items have the causes above. We did not change reference answers,
+hardcode case IDs into runtime code, or substitute older facts to improve the
+score.
 
 Additional reference prose is not uniformly reliable: its general mortgage
 description mentions a shorter-term rate inconsistent with the latest supplied
@@ -88,11 +89,13 @@ were **1.0**. One submitted conflict matched the one gold conflict, with
 precision, recall, F1, and resolution accuracy all **1.0**. This is a small
 synthetic contract check, not measured real-data conflict recall.
 
-## Original tests and local compatibility
+## Test suite and local compatibility
 
-**86 original tests pass**, using synthetic institutions, dates, amounts, and
-source text. They do not import the private harness or embed its reference
-answers. Coverage includes:
+**94 tests pass**: the 86 original tests use synthetic institutions, dates,
+amounts, and source text; seven tests cover the optional LLM boundary with
+mocked API responses; and one checks corroborating routing citations. They do
+not import the private harness or embed its reference answers. Coverage
+includes:
 
 - Observation cutoffs, increases/decreases, future effective dates, expired
   promotions, omitted pages and metrics, corrections, and date comparisons.
@@ -101,10 +104,32 @@ answers. Coverage includes:
 - Product names, personal/business and IRA scope, mortgage subtypes, APR/APY,
   term and balance tiers, vehicle years, and certificate deposit minimums.
 - Routing attribution, unknown branches/cards, membership geography, complete
-  wallet lists, reporting-year refusal, recommendation filtering, and FAQ retention.
+  wallet lists, corroborating sources, reporting-year refusal, recommendation
+  filtering, and FAQ retention.
 - Fee effective dates, future replacements, customer scope, and waivers.
 - Loader paths, escaping ZIP/manifest paths and symlinks, malformed ingestion,
   exact citation excerpts, deterministic repeats, and standalone operation.
+- LLM query-only request contents, structured interpretation parsing,
+  ambiguity and API-failure fallback, grounded retrieval after a rewrite, and
+  deterministic conflict handling, product-scope checks, and protection against
+  invented dollar amounts after interpretation.
+
+The official practice score measures the API-free `build()` path. The
+evaluator does not enable the optional LLM CLI mode. The external API itself
+was not called during tests; its request/response boundary was mocked.
+
+### Manual live LLM spot-checks
+
+On November 5, 2026, the operator ran the CLI with `--llm --llm-debug` and a
+configured API key. A term-deposit paraphrase was normalized to a certificate
+rate query and returned a cited answer. A vague “park my cash” question first
+exposed a real failure: the model guessed savings, and broad prose retrieval
+returned an unrelated car-loan table confidently. A product-scope guard was
+added; rerunning that wording then asked for clarification. An unsupported
+certificate term abstained, and a historical/current pair selected the
+corresponding dated snapshots. These are a few manual checks, not a measured
+accuracy score or part of the official evaluation. The only user-provided
+content sent to the API was each question; snapshot content stayed local.
 
 The suite ran successfully on local **Python 3.9.6, 3.12.14, and 3.14.7**.
 Python 3.11 was not installed locally; CI is configured for 3.9, 3.11, and 3.13,

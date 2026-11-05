@@ -28,15 +28,31 @@ answer, because substring validity alone is insufficient.
 attribute is absent, or equally applicable evidence remains contradictory.
 We do not substitute another product's rate or extrapolate beyond the dataset.
 
-**Why this architecture.** The financial tables have reusable structure. A local
-deterministic approach makes qualifiers and temporal choices inspectable,
-requires no secrets, and avoids sending assignment data to a model service.
-The trade-off is lower recall for unfamiliar wording or layouts. Embeddings
-could help retrieval; they would not replace temporal and conflict policies.
+**Why this architecture.** The financial tables have reusable structure. The
+default local deterministic approach makes qualifiers and temporal choices
+inspectable, requires no secrets, and avoids sending snapshot data to a model
+service. The trade-off is lower recall for unfamiliar wording or layouts.
+Embeddings could help retrieval; they would not replace temporal and conflict
+policies.
 
-**Evaluation.** Explain the unchanged official practice result alongside the
-synthetic policy tests and selftest conflict score. Distinguish measured repeat
-consistency from general semantic consistency, and public performance from
+**Optional LLM layer.** The CLI can opt into an OpenAI question interpreter
+with `--llm`. The model receives the user's question and returns a small
+structured decision: rewrite, clarify, or keep the original. It never sees the
+snapshot dataset and never supplies answer facts or citations. Program checks
+reject recognized product or qualifier changes and introduced numeric dollar
+amounts. The deterministic system remains
+responsible for selecting dated evidence, checking conflicts, validating
+citations, and abstaining. Live spot-checks show useful rewrites for clear
+wording and clarification for an ambiguous product request. The first vague
+cash question exposed a confident but unrelated passage match; a product-scope
+guard fixed that example. The sample is small, so broader reliability is not
+established. The LLM adds API latency and credentials. The official `build()`
+path remains API-free.
+
+**Evaluation.** The latest official score is 0.9329 for the API-free `build()`
+path. Explain it alongside synthetic policy tests and the selftest conflict
+score. Distinguish measured repeat consistency from general semantic
+consistency, and public performance from
 unknown hidden-test performance. See `docs/evaluation.md` for actual results
 and reference-answer discrepancies.
 

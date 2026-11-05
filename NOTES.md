@@ -3,8 +3,10 @@
 The submission entry point is `solution.py` at the repository root. It implements
 the organizer's `build()`, `ingest(snapshot)`, `answer(question, as_of=None)`, and
 `conflicts()` interface without importing anything from the participant kit.
-It uses Python's standard library and needs **no API keys, network access, model
-downloads, or paid services**. Install with `python -m pip install -r requirements.txt`.
+The required path uses Python's standard library and needs no API keys or
+network access. An optional CLI mode (`--llm`) uses an OpenAI API key to
+interpret question wording; it sends the question only, never snapshot content.
+Install with `python -m pip install -r requirements.txt`.
 
 The system retains observed document history and extracts qualified financial
 table rows. A historical cutoff first restricts what had actually been observed;
@@ -19,4 +21,8 @@ The private snapshots, original archives, assignment PDF, starter, scorer,
 practice reference answers, and generated evaluation output are deliberately
 excluded from Git. Reviewers supply their own authorized participant kit. See
 README.md for the exact evaluation command and docs/architecture.md for the
-policy, trade-offs, and limits. No external candidate implementation was used.
+policy, trade-offs, and limits. The latest official API-free practice score is
+0.9329; 94 tests pass, and the public-tree audit passes. A few live `--llm`
+spot-checks exercised paraphrase rewriting, clarification, refusal, and
+historical lookup; they are not an aggregate accuracy measure. No external
+candidate implementation was used.

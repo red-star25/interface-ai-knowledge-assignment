@@ -258,7 +258,7 @@ class ContentKnowledge:
         return self._extract(question, passages)
 
     def _routing(self, question: str, passages: list[Passage]) -> Optional[Answer]:
-        found = [(p, re.search(r"routing(?:\s+(?:transit|aba))?\s*(?:number|#)?\s*[:#-]?\s*(\d{9})", p.text, re.I)) for p in passages]
+        found = [(p, re.search(r"routing(?:\s+(?:transit|aba))?\s*(?:number|#)?\s*[:#-]?\s*\(?\s*(\d{9})", p.text, re.I)) for p in passages]
         named = _terms(question) - {"routing", "number", "repeat", "aba", "transit"}
         found = [(p, m) for p, m in found if m and (not named or named <= _terms(p.doc.title + " " + p.text))]
         if not named and found:
@@ -269,8 +269,16 @@ class ContentKnowledge:
         values = {m[1] for _, m in found}
         if len(values) > 1:
             return abstain("The routing-number sources disagree.")
-        p, m = max(found, key=lambda x: (_authority(x[0].doc), x[0].doc.taken_on))
-        return self._make([p], ["Routing number: " + m[1] + "."])
+        value = next(iter(values))
+        corroborating = {}
+        for passage, match in found:
+            if match[1] != value:
+                continue
+            key = (passage.doc.url, passage.doc.snapshot_id)
+            previous = corroborating.get(key)
+            if previous is None or len(passage.raw) < len(previous.raw):
+                corroborating[key] = passage
+        return self._make(list(corroborating.values()), ["Routing number: " + value + "."])
 
     def _link(self, question: str, passages: list[Passage]) -> Optional[Answer]:
         q = normalize(question)

@@ -40,6 +40,15 @@ class ContentTest(unittest.TestCase):
         self.assert_grounded(answer)
         self.assertIn("135792468", answer.text)
 
+    def test_routing_number_cites_all_current_pages_that_confirm_the_value(self):
+        contact = page("# Routing information\n\nCedar Credit Union routing number: 135792468.\n")
+        business = page("# Cash management\n\nUse our routing number (135792468) for incoming funds.\n",
+                        "business/cash-management", "Cedar Credit Union cash management")
+        self.ingest(contact, business)
+        answer = self.ks.answer("What is Cedar Credit Union's routing number?")
+        self.assert_grounded(answer)
+        self.assertEqual({source.url for source in answer.sources}, {contact.url, business.url})
+
     def test_other_institutions_routing_number_is_not_ours(self):
         self.ingest(page("# Visiting financial institutions\n\nFor a transfer to Birch Bank, use its routing number: 246813579.\n", "learn/blog/transfers", "Transfers to Birch Bank"))
         answer = self.ks.answer("What is Cedar Credit Union's routing number?")

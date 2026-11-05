@@ -4,16 +4,19 @@ A local knowledge system for answering questions from dated website snapshots.
 It preserves financial product qualifiers, distinguishes observation time from
 effective time, cites original evidence, and declines unsupported answers.
 
-The submission uses **Python's standard library only**: no keys, model downloads,
-external services, or live website calls. The required `build()` entry point is
-in the repository root, outside `starter/`.
+The required submission path uses **Python's standard library only**: no API
+keys, model downloads, external services, or live website calls. The CLI also
+has a separate opt-in LLM query-interpreter mode. The required `build()` entry
+point is in the repository root, outside `starter/`.
 
 ```mermaid
 flowchart LR
     S[Authorized local snapshots] --> D[Versioned documents and provenance]
     D --> R[Qualified rate and fee records]
     D --> P[Prose passages and publication dates]
-    Q[Question and optional date] --> T[Observation cutoff and applicability]
+    Q[Question and optional date] --> I[Optional LLM interpretation]
+    I -. rewrite or clarify .-> T[Observation cutoff and applicability]
+    Q -. default path .-> T
     R --> T
     P --> T
     T --> C[Resolve evidence or abstain]
@@ -62,6 +65,34 @@ python -m knowledge --snapshots ../participant-kit/snapshots_zip \
 
 python -m knowledge --snapshots ../participant-kit/snapshots_zip --conflicts
 ```
+
+An optional LLM mode can normalize unfamiliar wording before the same local
+evidence checks run. It is off by default, and the official `build()` entry
+point never needs an API key. To use OpenAI question interpretation in the CLI,
+set the key and a model available to your account, then pass `--llm`:
+
+```bash
+export OPENAI_API_KEY='...'
+export KNOWLEDGE_LLM_MODEL='gpt-4o-mini'
+python -m knowledge --snapshots ../participant-kit/snapshots_zip --llm \
+  --llm-debug \
+  'What is the yield for a half-year term deposit?'
+```
+
+This sends the user's question to the OpenAI Responses API, not the supplied
+snapshot pages. The model may rewrite the question, ask for clarification, or
+keep the original wording. It cannot provide the answer or citations. The
+existing system still selects dated evidence, resolves conflicts, checks
+citations, and decides when to abstain. Before using a rewrite, the program
+checks that it preserves a recognized product family and selected qualifiers,
+and does not introduce a recognized numeric dollar amount. This check is
+limited to those patterns; it cannot prove that every rewrite preserves
+meaning. If the API is unavailable, the system falls back to the normal
+deterministic path, which can misread unfamiliar wording. API
+usage may incur account charges. Never place the API key in the repository or
+commit it.
+`--llm-debug` prints the decision and normalized wording to stderr so API
+failures and non-rewrites are visible.
 
 The CLI emits JSON containing `text`, `sources`, `confident`, and `conflict_note`.
 Errors go to stderr. Each invocation builds an in-memory index; the official
@@ -128,10 +159,16 @@ dates or missing reporting periods produce `confident=False`.
 ## Engineering notes and limits
 
 - In-memory storage fits this corpus and avoids database deployment or private
-  persistent indexes. Nothing leaves the machine.
-- Deterministic extraction makes decisions inspectable and fast. It has bounded
-  paraphrase and layout coverage; it does not implement general semantic
-  reasoning, arbitrary calculations, or unrestricted multi-hop answers.
+  persistent indexes. In the default mode, nothing leaves the machine; opt-in
+  `--llm` sends only the question text to OpenAI.
+- Deterministic extraction makes decisions inspectable and fast. Without the
+  optional LLM mode, paraphrase and layout coverage is bounded. The LLM mode
+  adds query interpretation only; it does not implement arbitrary calculations
+  or unrestricted multi-hop answers.
+- A live trial found that vague wording could match an unrelated passage in
+  deterministic mode. With `--llm`, the same wording now asks for clarification
+  when the rewrite adds an unstated product. This is a targeted guard, not proof
+  that every model interpretation will be correct.
 - Financial changes can be compared using explicit ISO dates or named
   month/year periods. Historical “as of” supports ISO dates and named-month
   requests. Date inference deliberately avoids guessing arbitrary periods.

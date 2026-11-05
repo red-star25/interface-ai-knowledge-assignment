@@ -4,10 +4,17 @@ from __future__ import annotations
 import calendar
 import re
 from datetime import date
-from typing import Optional
+from typing import Optional, Protocol
 
+from knowledge.llm import QueryInterpretation
 from knowledge.models import Answer, Conflict, Document, abstain
 from knowledge.text import parse_date
+
+
+class QueryInterpreter(Protocol):
+    """Optional language interpreter; it must never provide answer facts."""
+
+    def interpret(self, question: str) -> Optional[QueryInterpretation]: ...
 
 
 def question_date(question: str) -> Optional[str]:
@@ -48,7 +55,7 @@ class KnowledgeSystem:
     effective/publication dates for the claims inside each observed document.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, query_interpreter: Optional[QueryInterpreter] = None) -> None:
         from knowledge.content import ContentKnowledge
         from knowledge.rates import RateKnowledge
 
@@ -58,6 +65,7 @@ class KnowledgeSystem:
         self._documents: dict[tuple[str, str], Document] = {}
         self._first: Optional[str] = None
         self._latest: Optional[str] = None
+        self.query_interpreter = query_interpreter
 
     def ingest(self, snapshot) -> None:
         """Validate a pull before mutating state; accept official duck types."""
@@ -132,9 +140,20 @@ class KnowledgeSystem:
                 return abstain("Both comparison dates must be within the available evidence period.")
             answer = self.rates.changes(question.strip(), start, end)
             return self._validate_sources(answer or abstain(), end)
-        answer = self.rates.answer(question.strip(), cutoff)
+        original_question = question.strip()
+        lookup_question = original_question
+        if self.query_interpreter is not None:
+            interpretation = self.query_interpreter.interpret(original_question)
+            if interpretation is not None:
+                if interpretation.decision == "clarify":
+                    return abstain("Please clarify which product or information you mean.")
+                if interpretation.decision == "rewrite" and interpretation.rewritten_question:
+                    # Keep the original words as well so explicit qualifiers
+                    # remain visible to the deterministic selector.
+                    lookup_question += "\n" + interpretation.rewritten_question
+        answer = self.rates.answer(lookup_question, cutoff)
         if answer is None:
-            answer = self.content.answer(question.strip(), cutoff)
+            answer = self.content.answer(lookup_question, cutoff)
         if answer is None:
             answer = abstain()
         return self._validate_sources(answer, cutoff)

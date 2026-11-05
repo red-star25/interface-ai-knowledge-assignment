@@ -10,14 +10,24 @@ unqualified raw retrieval is insufficient. The corpus's financial rates are
 Markdown tables with reusable schemas, so we chose deterministic row extraction
 and evidence selection, with extractive retrieval for prose.
 
-This keeps operation local, reproducible, inexpensive, and easy to inspect.
+The required path stays local, reproducible, inexpensive, and easy to inspect.
 An embedding index could improve paraphrase recall, but cannot decide whether a
-rate is current or belongs to the right tier. An LLM could improve language
-coverage but would introduce credentials, external data transmission, latency,
-and additional grounding validation. Neither is required by the contract.
-The cost of this choice is narrower language coverage and the need for explicit
-parsers for unfamiliar layouts. This is a bounded website system, not a general
-natural-language reasoning engine.
+rate is current or belongs to the right tier. The assignment allows an LLM for
+language understanding, so the CLI also has an opt-in query interpreter. In
+that mode it sends the user's question, but not the snapshot content, to the
+Responses API and asks whether to rewrite, clarify, or use the original wording.
+The model cannot produce facts or citations. The program rejects rewrites that
+add or drop a recognized product family or key qualifier, or introduce a
+recognized numeric dollar amount. These checks cover defined patterns, not all
+possible semantic changes. Deterministic retrieval still selects dated
+evidence, resolves conflicts, validates citations, and decides whether it
+supports an answer. API errors fall back to deterministic lookup on the
+original question, which can still misread unfamiliar wording. This may improve
+paraphrase coverage while keeping the official `build()` contract
+self-contained and API-free. The cost is optional credentials, API latency, account charges, and
+remaining risk that a rewrite misunderstands intent. Ambiguous interpretations
+should be declined. Neither parser handles every page layout, arbitrary
+calculation, or unrestricted multi-hop question.
 
 ## 2. Observation time and claim time
 
@@ -112,7 +122,9 @@ Validation has three separate roles: original synthetic tests exercise policy,
 the unchanged official scorer measures practice performance, and repository
 auditing checks public data hygiene. The scorer's URL match is less strict than
 our excerpt checks. Speed and repeat consistency do not establish correctness.
-The optional external LLM judge is disabled to keep all supplied data local.
+The optional external LLM judge is disabled. Query interpretation is also off
+unless the CLI receives `--llm`; synthetic tests mock its API response. The
+five supplied snapshot datasets are never sent by this integration.
 
 ## Requirement map
 
